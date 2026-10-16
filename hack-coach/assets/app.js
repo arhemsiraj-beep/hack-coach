@@ -111,6 +111,85 @@
     ]
   };
 
+  /* ---------- sample brief (pre-written, shown only for the sample event) ---------- */
+  var SAMPLE_OUT = {
+    read: 'This event asks for video agents that turn unwatched footage into something searchable and useful. Two judges come from infrastructure roles, so expect questions about how it runs, not only how it looks.',
+    recommended: 0,
+    recommended_reason: 'It uses the provided stack end to end, can be built in a day, and the live clip from a judge cannot be faked.',
+    directions: [
+      {
+        title: 'Bring-your-own-clip agent with cited timestamps',
+        pitch: 'Hand it any video and ask questions. Every answer links to the exact second.',
+        what_it_does: 'A judge or visitor gives you a short video from their own phone. The agent indexes it live, answers questions in plain language, and jumps the player to the moments that answer it.',
+        human_element: { type: 'live-input', detail: 'The footage comes from the person judging, live, so nobody can say it was staged.' },
+        ai_alone: { score: 'low', reason: 'A chatbot prompt cannot watch a stranger\'s clip. The result depends on the live video.' },
+        judge_fit: [
+          { judge: 'Abubakr Karali', why: 'Presented a webinar on video language models, so correct use of vision models should matter to him.', source_url: 'https://info.nvidia.com/vlm-webinar.html' },
+          { judge: 'Ram B.', why: 'His posts describe video search and summarisation pipelines, which is the same task.', source_url: 'https://www.vastdata.com/blog/unlock-video-intelligence-build-real-time-video-search-and-ai-summary' }
+        ],
+        stack_use: ['NVIDIA Cosmos for understanding', 'Semantic search over frames', 'VAST for storage', 'Weave tracing'],
+        resources: [
+          { name: 'Cosmos quickstart', url: 'https://docs.nvidia.com/cosmos/latest/cosmos3/quickstart_guide.html', why: 'Fastest way to run the model.' },
+          { name: 'VAST video search walkthrough', url: 'https://www.vastdata.com/blog/unlock-video-intelligence-build-real-time-video-search-and-ai-summary', why: 'A worked example of the pipeline.' }
+        ],
+        risk: 'Long clips are slow. Limit clip length and sample frames.',
+        time_fit: 'A thin version is possible in the first two hours.',
+        passion_check: 'Only pick this if you care about footage nobody has time to watch.'
+      },
+      {
+        title: 'Interview-first agent for a real footage problem',
+        pitch: 'Build around a problem a real person told you about at the venue.',
+        what_it_does: 'Ask two or three people what footage they never get to watch. Build the agent around the most common answer and quote them in the demo.',
+        human_element: { type: 'interview', detail: 'A named user you interviewed, quoted on your demo slide.' },
+        ai_alone: { score: 'low', reason: 'The problem comes from people, not from a model.' },
+        judge_fit: [{ judge: 'Brian Verkley', why: 'Writes about turning stored data into useful agents.', source_url: 'https://www.vastdata.com/blog/5-ways-to-rethink-ai-storage-and-avoid-hpc-era-pitfalls' }],
+        stack_use: ['Cosmos', 'Semantic search'],
+        resources: [],
+        risk: 'Interviews take time away from building.',
+        time_fit: 'Do the interviews in the first 30 minutes.',
+        passion_check: 'Choose the problem you find most interesting, not the one a judge would like.'
+      },
+      {
+        title: 'Live camera watcher on a physical setup',
+        pitch: 'A real object on the table that the audience can touch.',
+        what_it_does: 'Point a webcam at a real workspace. Detection tracks objects, the model explains unusual events, and the agent logs them as searchable moments.',
+        human_element: { type: 'physical', detail: 'A physical object on the table that the audience can change.' },
+        ai_alone: { score: 'medium', reason: 'Much of the pipeline can be written by a chatbot, but the live camera and the physical setup cannot.' },
+        judge_fit: [],
+        stack_use: ['YOLO detection', 'Cosmos', 'Weights & Biases models'],
+        resources: [],
+        risk: 'Camera and frame-rate problems. Highest build risk.',
+        time_fit: 'Needs a working camera pipeline early.',
+        passion_check: 'Pick this only if you enjoy hardware.'
+      }
+    ],
+    plan: [
+      { when: 'First hour', task: 'Run one sample clip through the model and get one answer with a timestamp.' },
+      { when: 'Next two hours', task: 'Accept a new clip, search it, and show the cited second.' },
+      { when: 'Then', task: 'Add tracing so each answer shows what the agent looked at.' },
+      { when: 'Last hour', task: 'Freeze features, rehearse the demo with a clip you did not prepare.' }
+    ],
+    pitch: [
+      { beat: 'Problem', line: 'Most video is never watched.' },
+      { beat: 'Solution', line: 'An agent you can ask questions of, with proof for every answer.' },
+      { beat: 'Demo', line: 'Ask a judge for a clip from their phone and run it live.' },
+      { beat: 'How it works', line: 'Cosmos for understanding, search for moments, a trace for trust.' },
+      { beat: 'Next', line: 'Live streams and hours of footage.' }
+    ],
+    challenge_questions: [
+      'What happens with a two-hour video?',
+      'How do you know an answer is not made up?',
+      'What does it cost per minute of footage?',
+      'Where does the video live, and who can see it?'
+    ],
+    ask_the_room: [
+      'Ask a mentor which model endpoint is fastest for video.',
+      'Ask a judge what footage they wish they could search.',
+      'Ask another team for a test clip.'
+    ],
+    warnings: ['This is a sample brief for the sample event. It does not use your team\'s answers.']
+  };
+
   /* ---------- state ---------- */
   function fresh() {
     return { step: 1, url: '', text: '', event: null, known: [], judges: [], answers: { hours: '7', team: '3' }, out: null, sample: false };
@@ -233,6 +312,10 @@
     var judges = S.judges.filter(function (j) { return j.status === 'done' && j.confirmed; })
       .map(function (j) { return { name: j.name, title: j.title, company: j.company, result: j.result }; });
     ui.busy = true; ui.error = ''; render();
+    if (S.sample) {
+      setTimeout(function () { S.out = JSON.parse(JSON.stringify(SAMPLE_OUT)); ui.busy = false; go(4); }, 900);
+      return;
+    }
     api('directions', { event: S.event, judges: judges, answers: S.answers, known_urls: S.known }).then(function (res) {
       S.out = res; ui.busy = false; go(4);
     }).catch(function (e) { ui.busy = false; ui.error = e.message; render(); });
@@ -487,7 +570,7 @@
     if (!o) { return h('div', { class: 'hc-view' }, h('p', {}, 'No brief yet.'), h('button', { class: 'hc-btn', type: 'button', onclick: function () { go(3); } }, 'Back to your team')); }
     var copyBtn = h('button', { class: 'hc-btn small', type: 'button', onclick: function () { copyBrief(copyBtn); } }, 'Copy brief');
     return h('div', { class: 'hc-view' },
-      h('div', { class: 'hc-row' }, h('h2', {}, 'Your brief'), S.sample ? pill('info', 'Sample judges') : null),
+      h('div', { class: 'hc-row' }, h('h2', {}, 'Your brief'), S.sample ? pill('info', 'Sample brief') : null),
       h('p', {}, o.read),
       h('div', { class: 'hc-cards' }, arr(o.directions).map(function (d, i) { return directionCard(d, i, o); })),
       o.recommended_reason ? h('p', {}, h('strong', {}, 'Why the recommended one: '), o.recommended_reason) : null,
