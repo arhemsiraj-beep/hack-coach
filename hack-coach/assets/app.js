@@ -596,6 +596,7 @@
     root.textContent = '';
     if (S.step > 1 && !S.event) { S.step = 1; }
     var view = S.step === 2 ? viewJudges() : (S.step === 3 ? viewTeam() : (S.step === 4 ? viewBrief() : viewEvent()));
+    root.appendChild(h('a', { class: 'hc-site', href: '/' }, 'Back to site'));
     root.appendChild(stepper());
     root.appendChild(view);
   }
