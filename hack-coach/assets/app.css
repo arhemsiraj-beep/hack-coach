@@ -249,3 +249,60 @@ html.hc-full, html.hc-full body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .hc-app * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* brand as button */
+.hc-brand { background: none; border: 0; cursor: pointer; padding: 0; color: var(--hc-ink); font-weight: 700; font-size: 1rem; }
+.hc-brand:hover .hc-logo { box-shadow: 0 0 18px color-mix(in srgb, var(--hc-accent) 70%, transparent); }
+
+/* colour-shifting headings: slow, and only part of the text lights up */
+.hc-shift {
+  background: linear-gradient(100deg, var(--hc-ink) 0%, var(--hc-ink) 38%, var(--hc-accent) 56%, var(--hc-ink) 74%, var(--hc-ink) 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  animation: hcshift 9s ease-in-out infinite alternate;
+}
+@keyframes hcshift { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+/* intro */
+.hc-intro { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; overflow: hidden; animation: hcin 0.6s ease both; }
+.hc-orb { position: absolute; width: min(70vw, 720px); height: min(70vw, 720px); border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -55%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--hc-accent) 38%, transparent) 0%, transparent 65%); filter: blur(30px); animation: hcpulse 6s ease-in-out infinite; pointer-events: none; }
+.hc-orb.two { width: min(46vw, 480px); height: min(46vw, 480px); left: 68%; top: 62%; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, color-mix(in srgb, #5b8cff 30%, transparent) 0%, transparent 65%); animation: hcpulse2 9s ease-in-out infinite reverse; }
+@keyframes hcpulse { 0%, 100% { opacity: 0.55; transform: translate(-50%, -55%) scale(1); } 50% { opacity: 1; transform: translate(-50%, -55%) scale(1.12); } }
+@keyframes hcpulse2 { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.15); } }
+.hc-introin { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; max-width: 760px; }
+.hc-biglogo { width: 72px; height: 72px; border-radius: 20px; background: var(--hc-accent); color: var(--hc-accent-ink); display: grid; place-items: center; font-size: 2rem; font-weight: 800;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hc-accent) 60%, transparent), 0 0 40px color-mix(in srgb, var(--hc-accent) 65%, transparent); animation: hcglowbox 3.6s ease-in-out infinite; }
+@keyframes hcglowbox { 0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--hc-accent) 60%, transparent), 0 0 28px color-mix(in srgb, var(--hc-accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--hc-accent) 80%, transparent), 0 0 64px color-mix(in srgb, var(--hc-accent) 80%, transparent); } }
+.hc-app h1.hc-glowtitle { font-size: clamp(3.2rem, 11vw, 7rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+  background: linear-gradient(100deg, var(--hc-ink) 0%, var(--hc-accent) 45%, var(--hc-ink) 70%, var(--hc-accent) 100%); background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: hcshift 7s ease-in-out infinite alternate, hcglowtxt 4s ease-in-out infinite; }
+@keyframes hcglowtxt { 0%, 100% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--hc-accent) 35%, transparent)); } 50% { filter: drop-shadow(0 0 34px color-mix(in srgb, var(--hc-accent) 75%, transparent)); } }
+.hc-tag { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; font-size: clamp(1.05rem, 2.2vw, 1.4rem); color: var(--hc-muted); }
+.hc-word { animation: hcword 6s ease-in-out infinite; }
+.hc-word.w1 { animation-delay: 2s; } .hc-word.w2 { animation-delay: 4s; }
+@keyframes hcword { 0%, 100% { color: var(--hc-muted); } 12%, 28% { color: var(--hc-accent); } 40% { color: var(--hc-muted); } }
+.hc-center { justify-content: center; }
+.hc-btn.big { padding: 14px 30px; font-size: 1.05rem; border-radius: 12px; }
+.hc-intro .hc-btn:not(.ghost) { box-shadow: 0 0 28px color-mix(in srgb, var(--hc-accent) 45%, transparent); }
+
+/* no judges published */
+.hc-mystery { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 22px 24px; border: 1px dashed var(--hc-line); border-radius: 14px; background: var(--hc-surface); }
+.hc-seats { display: flex; gap: 10px; }
+.hc-seat { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 1.4rem; font-weight: 700; color: var(--hc-accent);
+  background: var(--hc-accent-soft); border: 1px solid color-mix(in srgb, var(--hc-accent) 40%, transparent); animation: hcseat 3.2s ease-in-out infinite; }
+@keyframes hcseat { 0%, 100% { transform: translateY(0); box-shadow: 0 0 0 transparent; } 50% { transform: translateY(-5px); box-shadow: 0 8px 22px color-mix(in srgb, var(--hc-accent) 35%, transparent); } }
+.hc-routes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 14px; }
+.hc-route { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 18px; border: 1px solid var(--hc-line); border-radius: 12px; background: var(--hc-surface); transition: transform 0.15s, border-color 0.15s; }
+.hc-route:hover { transform: translateY(-2px); border-color: var(--hc-accent); }
+.hc-route > .hc-view { width: 100%; animation: none; }
+.hc-lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: start; }
+.hc-lens { border: 1px solid var(--hc-line); border-radius: 12px; background: var(--hc-surface); overflow: hidden; transition: border-color 0.15s; }
+.hc-lens.open { border-color: var(--hc-accent); box-shadow: 0 0 0 3px var(--hc-accent-soft); }
+.hc-lensbtn { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; background: transparent; border: 0; cursor: pointer; }
+.hc-caret { font-size: 1.3rem; color: var(--hc-accent); width: 20px; text-align: center; }
+.hc-lensbody { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 16px; animation: hcin 0.2s ease both; }

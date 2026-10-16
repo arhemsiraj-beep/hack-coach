@@ -193,6 +193,7 @@ final class Hack_Coach {
             'ep' => [
                 'event'      => rest_url(self::NS . '/event'),
                 'judge'      => rest_url(self::NS . '/judge'),
+                'judges'     => rest_url(self::NS . '/judges'),
                 'directions' => rest_url(self::NS . '/directions'),
             ],
             'passcode' => $this->opt('passcode') !== '',
@@ -210,6 +211,7 @@ final class Hack_Coach {
         $common = ['methods' => 'POST', 'permission_callback' => [$this, 'gate']];
         register_rest_route(self::NS, '/event', $common + ['callback' => [$this, 'ep_event']]);
         register_rest_route(self::NS, '/judge', $common + ['callback' => [$this, 'ep_judge']]);
+        register_rest_route(self::NS, '/judges', $common + ['callback' => [$this, 'ep_judges']]);
         register_rest_route(self::NS, '/directions', $common + ['callback' => [$this, 'ep_directions']]);
     }
 
@@ -668,6 +670,87 @@ final class Hack_Coach {
         ];
         set_transient($ck, $out, DAY_IN_SECONDS);
         return $out;
+    }
+
+    /* ---------------------------------------------------------------
+     * Endpoint 2b: find who is judging an event
+     * ------------------------------------------------------------- */
+
+    public function ep_judges(WP_REST_Request $r) {
+        @set_time_limit(130); // phpcs:ignore
+        $ev   = (array) $r->get_param('event');
+        $name = $this->str($ev['name'] ?? '', 160);
+        $org  = $this->str($ev['organizer'] ?? '', 200);
+
+        if ($name === '') {
+            return new WP_Error('hc_input', 'Read an event first.', ['status' => 400]);
+        }
+        if (!$this->opt('tavily_key')) {
+            return new WP_Error('hc_nosearch', 'Judge search is not set up. Add a Tavily key in settings, or paste the names yourself.', ['status' => 400]);
+        }
+
+        $ck  = 'hc_jf_' . md5(strtolower($name . '|' . $org));
+        $hit = get_transient($ck);
+        if ($hit && !$r->get_param('refresh')) {
+            return $hit;
+        }
+
+        $res = [];
+        foreach (["{$name} judges", trim("{$name} {$org} judges mentors panel")] as $q) {
+            foreach ($this->tavily($q) as $x) {
+                $u = $this->http_url($x['url'] ?? '');
+                if ($u !== '' && !isset($res[$u])) {
+                    $res[$u] = ['title' => $this->str($x['title'] ?? '', 160), 'content' => $this->str($x['content'] ?? '', 1200)];
+                }
+            }
+        }
+        $res = array_slice($res, 0, 10, true);
+        if (!$res) {
+            return ['judges' => [], 'note' => 'No public pages mentioned judges for this event.'];
+        }
+
+        $task = "Find the people named as JUDGES (or the judging panel) for this specific event in the sources. Ignore speakers, hosts and mentors unless a source calls them judges. Ignore people from other events with similar names.\n"
+            . 'Shape: {"judges":[{"name":str,"title":str|null,"company":str|null,"source_url":str}],"note":str}' . "\n"
+            . 'Every judge needs a source_url copied exactly from a source tag. If no source names judges for this event, return an empty list and say so in note.';
+
+        $buf = "Event: {$name}\nOrganizer: {$org}\n\n";
+        $i   = 1;
+        foreach ($res as $u => $x) {
+            $buf .= "<source n=\"{$i}\" url=\"{$u}\" title=\"" . esc_attr($x['title']) . "\">\n" . $x['content'] . "\n</source>\n";
+            $i++;
+        }
+
+        $d = $this->claude($this->sys($task), $buf, 1500);
+        if (is_wp_error($d)) {
+            return $d;
+        }
+
+        $allowed = array_keys($res);
+        $seen    = [];
+        $out     = [];
+        foreach ((array) ($d['judges'] ?? []) as $j) {
+            if (!is_array($j) || empty($j['name']) || !in_array($j['source_url'] ?? '', $allowed, true)) {
+                continue;
+            }
+            $key = strtolower($this->str($j['name'], 80));
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[]      = [
+                'name'       => $this->str($j['name'], 80),
+                'title'      => $this->str($j['title'] ?? '', 120),
+                'company'    => $this->str($j['company'] ?? '', 120),
+                'source_url' => $j['source_url'],
+            ];
+            if (count($out) >= 8) {
+                break;
+            }
+        }
+
+        $result = ['judges' => $out, 'note' => $out ? '' : $this->str($d['note'] ?? 'No public pages named judges for this event.', 300)];
+        set_transient($ck, $result, 6 * HOUR_IN_SECONDS);
+        return $result;
     }
 
     /* ---------------------------------------------------------------

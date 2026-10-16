@@ -206,6 +206,7 @@
   }
   var S = load() || fresh();
   var ui = { busy: false, error: '', note: '' };
+  ui.intro = !S.event;
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage is optional */ } }
 
   /* ---------- tiny DOM helpers (text only, never innerHTML) ---------- */
@@ -287,7 +288,7 @@
     S.judges = JSON.parse(JSON.stringify(SAMPLE.judges));
     S.known = SAMPLE.known.slice();
     S.sample = true;
-    ui.sel = 0; ui.dir = undefined; ui.btab = '';
+    ui.sel = 0; ui.dir = undefined; ui.btab = ''; ui.intro = false;
     S.step = 2;
     save(); render();
   }
@@ -322,6 +323,37 @@
     api('directions', { event: S.event, judges: judges, answers: S.answers, known_urls: S.known }).then(function (res) {
       S.out = res; ui.busy = false; go(4);
     }).catch(function (e) { ui.busy = false; ui.error = e.message; render(); });
+  }
+
+  function addJudges(list) {
+    var added = 0;
+    list.forEach(function (n) {
+      if (!n.name) { return; }
+      var dup = S.judges.some(function (j) { return j.name.toLowerCase() === n.name.toLowerCase(); });
+      if (dup) { return; }
+      S.judges.push({ name: n.name, title: n.title || '', company: n.company || '', links: n.source_url ? [n.source_url] : [], status: 'idle', confirmed: true, found_at: n.source_url || '' });
+      added++;
+    });
+    ui.sel = 0; save();
+    return added;
+  }
+  function findJudges() {
+    ui.finding = true; ui.error = ''; ui.note = ''; render();
+    api('judges', { event: S.event }).then(function (res) {
+      ui.finding = false;
+      var n = addJudges(arr(res.judges));
+      if (!n) { ui.note = res.note || 'No judges were found online. Try pasting names, or use the sponsor panel below.'; }
+      save(); render();
+    }).catch(function (e) { ui.finding = false; ui.error = e.message; render(); });
+  }
+  function addBulk() {
+    var list = str(ui.bulk).split(/\n+/).map(function (line) {
+      var p = line.split(/\s*[,|\u2013\u2014]\s*|\s+-\s+/).map(function (x) { return x.trim(); });
+      return { name: p[0] || '', title: p[1] || '', company: p[2] || '' };
+    }).filter(function (x) { return x.name; });
+    if (!list.length) { ui.error = 'Type one judge per line, like: Jane Doe, Engineer, Acme'; render(); return; }
+    ui.error = ''; ui.bulk = ''; ui.note = '';
+    addJudges(list); render();
   }
 
   /* ---------- markdown export ---------- */
@@ -415,7 +447,7 @@
   function topbar() {
     var names = ['Event', 'Judges', 'Team', 'Brief'];
     return h('nav', { class: 'hc-top', 'aria-label': 'Progress' },
-      h('div', { class: 'hc-brand' }, h('span', { class: 'hc-logo' }, 'H'), 'Hack Coach'),
+      h('button', { type: 'button', class: 'hc-brand', title: 'Back to the intro', onclick: function () { ui.intro = true; render(); } }, h('span', { class: 'hc-logo' }, 'H'), 'Hack Coach'),
       h('ol', { class: 'hc-steps' }, names.map(function (n, i) {
         var k = i + 1, on = k === S.step, ok = canGo(k);
         return h('li', { class: (on ? 'on ' : '') + (k < S.step ? 'done' : '') },
@@ -423,6 +455,77 @@
             h('span', { class: 'n' }, k < S.step ? '✓' : String(k)), h('span', { class: 'tx' }, n)));
       })),
       h('a', { class: 'hc-site', href: '/' }, 'Back to site'));
+  }
+
+  /* ----- intro ----- */
+  function viewIntro() {
+    var words = ['Read the event.', 'Know the room.', 'Build what AI cannot.'];
+    return h('div', { class: 'hc-intro' },
+      h('div', { class: 'hc-orb' }), h('div', { class: 'hc-orb two' }),
+      h('div', { class: 'hc-introin' },
+        h('span', { class: 'hc-biglogo' }, 'H'),
+        h('h1', { class: 'hc-glowtitle' }, 'Hack Coach'),
+        h('p', { class: 'hc-tag' }, words.map(function (w, i) { return h('span', { class: 'hc-word w' + i }, w); })),
+        h('div', { class: 'hc-row hc-center' },
+          h('button', { class: 'hc-btn big', type: 'button', onclick: function () { ui.intro = false; go(S.event ? (S.step || 1) : 1); } }, S.event ? 'Continue coaching' : 'Start coaching'),
+          h('button', { class: 'hc-btn ghost big', type: 'button', onclick: loadSample }, 'Try a sample event')),
+        h('p', { class: 'hc-small hc-muted' }, 'Public sources only. Every claim links to where it came from.')));
+  }
+
+  /* ----- when no judges are published ----- */
+  var GENERIC_LENS = [
+    { name: 'The engineer', what: 'Cares whether it really runs.' },
+    { name: 'The product lead', what: 'Cares who it is for and why they would use it.' },
+    { name: 'The founder', what: 'Cares whether this could become a real thing.' }
+  ];
+  function lensQuestions(name) {
+    return [
+      'How does your project make real use of ' + name + ', beyond a logo on a slide?',
+      'What breaks first if ten times more people use this?',
+      'What did you learn about ' + name + ' that surprised you?'
+    ];
+  }
+  function lensCard(s, i) {
+    var open = ui.lens === i;
+    var qs = !s.generic ? lensQuestions(s.name) : [
+      'Show me it working on something you did not prepare.',
+      'Who is the first user, and how do you know they want it?',
+      'What would you build next, and why that first?'
+    ];
+    return h('div', { class: 'hc-lens' + (open ? ' open' : '') },
+      h('button', { type: 'button', class: 'hc-lensbtn', 'aria-expanded': open ? 'true' : 'false', onclick: function () { ui.lens = open ? -1 : i; render(); } },
+        avatar(s.name), h('span', { class: 'hc-tile-t' }, h('b', {}, s.name), h('small', {}, s.what || '')), h('span', { class: 'hc-caret' }, open ? '\u2212' : '+')),
+      open ? h('div', { class: 'hc-lensbody' }, label('Practice questions, not from any real judge'), h('ul', {}, qs.map(function (q) { return h('li', {}, q); }))) : null);
+  }
+  function route(n, title, text, body) {
+    return h('div', { class: 'hc-route' }, h('span', { class: 'hc-featn' }, n), h('b', {}, title), h('p', { class: 'hc-small hc-muted' }, text), body);
+  }
+  function emptyJudges() {
+    var sp = arr(S.event.sponsors).map(function (s) { return { name: s.name, what: s.what }; });
+    var lens = sp.length ? sp : GENERIC_LENS.map(function (g) { return { name: g.name, what: g.what, generic: true }; });
+    return h('div', { class: 'hc-view hc-split' },
+      dossier(),
+      h('div', { class: 'hc-main' },
+        h('div', { class: 'hc-head' }, h('div', {}, label('Step 2'), h('h2', { class: 'hc-shift' }, 'The panel is a secret'))),
+        h('div', { class: 'hc-mystery' },
+          h('div', { class: 'hc-seats', 'aria-hidden': 'true' }, [0, 1, 2, 3].map(function (i) { return h('span', { class: 'hc-seat', style: 'animation-delay:' + (i * 0.45) + 's' }, '?'); })),
+          h('p', { class: 'hc-lead' }, 'This event has not published its judges. That is normal, and you can still prepare. Pick a route.')),
+        ui.note ? h('p', { class: 'hc-callout warn' }, ui.note) : null,
+        errBox(),
+        h('div', { class: 'hc-routes' },
+          route('1', 'Find them', 'Search the web for who is judging this event. Results link to where each name was found.',
+            h('button', { class: 'hc-btn', type: 'button', disabled: ui.finding ? true : null, onclick: findJudges },
+              ui.finding ? [h('span', { class: 'hc-spin on-accent' }), 'Searching'] : 'Search for judges')),
+          route('2', 'Paste names', 'One per line: name, title, company. Title and company are optional.',
+            h('div', { class: 'hc-view', style: 'gap:8px' },
+              h('textarea', { id: 'hc-bulk', rows: 3, placeholder: 'Jane Doe, Engineer, Acme', value: ui.bulk || '', 'aria-label': 'Judge names', oninput: function (e) { ui.bulk = e.target.value; } }),
+              h('button', { class: 'hc-btn ghost small', type: 'button', onclick: addBulk }, 'Add judges'))),
+          route('3', 'Use the room instead', 'Practise against the sponsors. Tap a card below to see the questions their people tend to ask.', null)),
+        h('div', { class: 'hc-block' }, label(sp.length ? 'The sponsor panel' : 'Three people who are probably in the room'),
+          h('div', { class: 'hc-lenses' }, lens.map(lensCard))),
+        h('div', { class: 'hc-actions' },
+          h('button', { class: 'hc-btn ghost', type: 'button', onclick: function () { go(1); } }, 'Back'),
+          h('button', { class: 'hc-btn', type: 'button', onclick: function () { go(3); } }, 'Continue without judges'))));
   }
 
   /* ----- step 1 ----- */
@@ -437,7 +540,7 @@
     return h('div', { class: 'hc-view hc-hero' },
       h('div', { class: 'hc-herotxt' },
         label('Hackathon strategy coach'),
-        h('h1', {}, 'Walk in knowing what wins.'),
+        h('h1', { class: 'hc-shift' }, 'Walk in knowing what wins.'),
         h('p', { class: 'hc-lead' }, 'Paste an event link. Hack Coach reads the brief, researches the judges from public pages, then coaches your team toward ideas a single AI prompt could not produce.')),
       passBox(),
       h('div', { class: 'hc-search' }, url,
@@ -479,7 +582,7 @@
     function meta(k, v) { return v ? h('div', { class: 'hc-meta' }, h('span', {}, k), h('b', {}, v)) : null; }
     return h('aside', { class: 'hc-dossier' },
       h('div', { class: 'hc-row' }, label('Event'), S.sample ? pill('info', 'Sample') : null),
-      h('h2', {}, e.name),
+      h('h2', { class: 'hc-shift' }, e.name),
       h('div', { class: 'hc-metas' }, meta('When', e.date), meta('Where', e.location), meta('Run by', e.organizer), meta('Build time', e.build_window), meta('Team size', e.team_size)),
       e.theme ? h('div', { class: 'hc-block' }, label('Theme'), h('p', {}, e.theme)) : null,
       h('div', { class: 'hc-block' }, label('Judged on'),
@@ -577,11 +680,12 @@
     var pending = S.judges.some(function (j) { return j.status === 'loading'; });
     var anyIdle = S.judges.some(function (j) { return j.name && j.status !== 'done' && j.status !== 'loading'; });
     var i = selJudge(), j = S.judges[i];
+    if (!total) { return emptyJudges(); }
     return h('div', { class: 'hc-view hc-split' },
       dossier(),
       h('div', { class: 'hc-main' },
         h('div', { class: 'hc-head' },
-          h('div', {}, label('Step 2'), h('h2', {}, 'Who is judging')),
+          h('div', {}, label('Step 2'), h('h2', { class: 'hc-shift' }, 'Who is judging')),
           h('div', { class: 'hc-row' },
             anyIdle ? h('button', { class: 'hc-btn', type: 'button', disabled: pending ? true : null, onclick: researchAll }, pending ? 'Researching...' : 'Research all judges') : null)),
         total ? h('div', { class: 'hc-progrow' }, bar(Math.round(done / total * 100)), h('span', { class: 'hc-small hc-muted' }, done + ' of ' + total + ' researched')) : null,
@@ -631,7 +735,7 @@
     });
     return h('div', { class: 'hc-view hc-split' },
       h('aside', { class: 'hc-dossier' },
-        label('Step 3'), h('h2', {}, 'Your team'),
+        label('Step 3'), h('h2', { class: 'hc-shift' }, 'Your team'),
         h('p', { class: 'hc-muted' }, 'The more specific you are, the less generic the ideas. Directions are built from your skills, your people and your hardware.'),
         h('div', { class: 'hc-block' }, label('Coach inputs'),
           h('div', { class: 'hc-progrow' }, bar(Math.round(answered / core.length * 100)), h('span', { class: 'hc-small hc-muted' }, answered + ' of ' + core.length)),
@@ -740,11 +844,11 @@
 
     return h('div', { class: 'hc-view' },
       h('div', { class: 'hc-head' },
-        h('div', {}, label('Step 4'), h('div', { class: 'hc-row' }, h('h2', {}, 'Your brief'), S.sample ? pill('info', 'Sample brief') : null)),
+        h('div', {}, label('Step 4'), h('div', { class: 'hc-row' }, h('h2', { class: 'hc-shift' }, 'Your brief'), S.sample ? pill('info', 'Sample brief') : null)),
         h('div', { class: 'hc-row' }, copyBtn,
           h('button', { class: 'hc-btn ghost small', type: 'button', onclick: downloadBrief }, 'Download .md'),
           h('button', { class: 'hc-btn ghost small', type: 'button', onclick: function () { go(3); } }, 'Change answers'),
-          h('button', { class: 'hc-btn ghost small danger', type: 'button', onclick: function () { S = fresh(); ui.sel = 0; ui.dir = undefined; ui.btab = ''; save(); render(); } }, 'Start over'))),
+          h('button', { class: 'hc-btn ghost small danger', type: 'button', onclick: function () { S = fresh(); ui.sel = 0; ui.dir = undefined; ui.btab = ''; ui.intro = true; save(); render(); } }, 'Start over'))),
       o.read ? h('p', { class: 'hc-lead' }, o.read) : null,
       tabBar([['dirs', 'Directions', dirs.length], ['plan', 'Plan', arr(o.plan).length], ['pitch', 'Pitch', arr(o.pitch).length], ['prep', 'Prepare', arr(o.challenge_questions).length]], bt, function (t) { ui.btab = t; render(); }),
       h('div', { class: 'hc-tabbody wide' }, body),
@@ -760,6 +864,7 @@
     if (aid && typeof ae.selectionStart === 'number') { ss = ae.selectionStart; se = ae.selectionEnd; }
     root.textContent = '';
     if (S.step > 1 && !S.event) { S.step = 1; }
+    if (ui.intro) { root.appendChild(viewIntro()); root.scrollTop = 0; return; }
     var view = S.step === 2 ? viewJudges() : (S.step === 3 ? viewTeam() : (S.step === 4 ? viewBrief() : viewEvent()));
     root.appendChild(topbar());
     root.appendChild(h('div', { class: 'hc-page' }, view));
