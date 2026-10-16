@@ -4,6 +4,7 @@
   var cfg = window.HackCoachCfg || { ep: {}, passcode: false };
   var root = document.getElementById('hack-coach');
   if (!root) { return; }
+  document.documentElement.classList.add('hc-full');
 
   var KEY = 'hackcoach_state_v1';
 
