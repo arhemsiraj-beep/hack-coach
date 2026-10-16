@@ -16,22 +16,14 @@
   --hc-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: var(--hc-bg);
   color: var(--hc-ink);
-  /* full width: break out of the theme's content column */
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  min-height: 100vh;
-  border: 0;
-  border-radius: 0;
-  padding-block: clamp(24px, 4vw, 56px);
-  padding-left: max(20px, calc((100vw - 1280px) / 2));
-  padding-right: max(20px, calc((100vw - 1280px) / 2));
-  font-size: clamp(17px, 1.15vw + 11px, 21px);
-  line-height: 1.6;
+  border: 1px solid var(--hc-line);
+  border-radius: 8px;
+  padding: clamp(16px, 4vw, 32px);
+  font-size: 16px;
+  line-height: 1.55;
   box-sizing: border-box;
+  max-width: 100%;
 }
-html.hc-full, html.hc-full body { overflow-x: hidden; }
 @media (prefers-color-scheme: dark) {
   .hc-app {
     --hc-bg: #0f141a; --hc-surface: #161d25; --hc-ink: #e7ecf1; --hc-muted: #9aa5b1; --hc-line: #28323d;
@@ -42,13 +34,13 @@ html.hc-full, html.hc-full body { overflow-x: hidden; }
 }
 .hc-app *, .hc-app *::before, .hc-app *::after { box-sizing: border-box; }
 .hc-app h2, .hc-app h3, .hc-app h4 { margin: 0; line-height: 1.2; color: var(--hc-ink); text-wrap: balance; }
-.hc-app h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.01em; }
-.hc-app h3 { font-size: 1.3rem; }
-.hc-app h4 { font-size: 1.05rem; }
-.hc-app p { margin: 0; max-width: 72ch; }
+.hc-app h2 { font-size: 1.5rem; }
+.hc-app h3 { font-size: 1.15rem; }
+.hc-app h4 { font-size: 0.98rem; }
+.hc-app p { margin: 0; max-width: 66ch; }
 .hc-app a { color: var(--hc-accent); text-underline-offset: 3px; }
 .hc-app ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 6px; }
-.hc-app .hc-view { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.hc-app .hc-view { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 
 .hc-label { font-family: var(--hc-mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--hc-muted); }
 .hc-muted { color: var(--hc-muted); }
@@ -81,9 +73,9 @@ html.hc-full, html.hc-full body { overflow-x: hidden; }
 .hc-btn.ghost { background: transparent; color: var(--hc-accent); }
 .hc-btn.small { padding: 6px 12px; font-size: 0.88rem; }
 
-.hc-card { background: var(--hc-surface); border: 1px solid var(--hc-line); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hc-card { background: var(--hc-surface); border: 1px solid var(--hc-line); border-radius: 6px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .hc-card.rec { border-color: var(--hc-accent); background: var(--hc-accent-soft); }
-.hc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 20px; }
+.hc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; }
 .hc-pill { display: inline-block; width: fit-content; font-family: var(--hc-mono); font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
 .hc-pill.ok { background: var(--hc-ok-soft); color: var(--hc-ok); }
 .hc-pill.warn { background: var(--hc-warn-soft); color: var(--hc-warn); }
